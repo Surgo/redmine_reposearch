@@ -18,6 +18,8 @@
 class ReposearchController < ApplicationController
   unloadable
 
+  menu_item :reposearch
+
   before_filter :find_optional_project
   before_filter :find_projects
   before_filter :parse_queries

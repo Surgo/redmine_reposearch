@@ -15,10 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-class RepoindexerController < ApplicationController
+class RepoindexerController < ActionController::Base
   unloadable
 
-  before_filter :find_project_to_crawl
+  before_filter :check_enabled
+  before_filter :find_project
   before_filter :open_db
   after_filter :close_db
 
@@ -27,24 +28,28 @@ class RepoindexerController < ApplicationController
 
 
   def indexing
-    if @db.repository and @db.repository.supports_cat?
-      logger.debug("Indexing: %s" % @db.name)
-      @db.indexing(params[:init])
-      @db.optimize()
-      logger.info("Successfully indexed %s: %d docs" % [@db.name, @db.est_db.doc_num()])
-      render :nothing => true, :status => 200
-    else
-      logger.warn("Skip indexing (unsupported): %s" % project.name)
-      render :nothing => true, :status => 404
-    end
+    logger.debug("Indexing: %s" % @db.name)
+    @db.indexing(params[:init])
+    @db.optimize()
+    logger.info("Successfully indexed %s: %d docs" % [@db.name, @db.est_db.doc_num()])
+    render :text => 'Successfully indexed!', :status => 200
   end
 
   private
 
-  def find_project_to_crawl
+  def find_project
     @project = Project.active.has_module(:reposearch).find(params[:id])
+    unless @project.repository
+      render :text => 'Project has not repository.', :status => 404
+      return false
+    end
+    unless @project.repository.supports_cat?
+      render :text => 'Unsupported repository.', :status => 404
+      return false
+    end
+    @project.repository.fetch_changesets
   rescue ActiveRecord::RecordNotFound
-    render :nothing => true, :status => 404
+    render :text => 'Project not found.', :status => 404
     return false
   end
 
@@ -61,17 +66,25 @@ class RepoindexerController < ApplicationController
   def scm_command_failed(exception)
     @db.close()
     logger.error("SCM command failed: " % exception.message)
-    render :nothing => true, :status => 500
+    render :text => "SCM command failed: " % exception.message, :status => 500
     return false
   end
 
   def estraier_command_failed(exception)
     @db.close()
     logger.error("Estraier command failed: " % exception.message)
-    render :nothing => true, :status => 500
+    render :text => "Estraier command failed: " % exception.message, :status => 500
     return false
   rescue ActionController::DoubleRenderError
-    render :nothing => true, :status => 500
+    render :text => "Estraier command failed: " % exception.message, :status => 500
     return false
+  end
+
+  def check_enabled
+    User.current = nil
+    unless Setting.sys_api_enabled? && params[:key].to_s == Setting.sys_api_key
+      render :text => 'Access denied. Repository management WS is disabled or key is invalid.', :status => 403
+      return false
+    end
   end
 end

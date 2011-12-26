@@ -27,7 +27,6 @@ Redmine::Plugin.register :redmine_reposearch do
 
   project_module :reposearch do
     permission :reposearch_search, {:reposearch => [:search, ], }
-    permission :reposearch_indexing, {:repoindexer => [:indexing, ], }, :public => true
     menu :project_menu, :reposearch, {:controller => 'reposearch', :action => 'search', },
          :caption => :label_reposearch, :param => :id
   end

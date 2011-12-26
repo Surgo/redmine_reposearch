@@ -46,7 +46,6 @@ module ReposearchEngine
       @repository = @project.repository
       @path = File.join(DATABASE_ROOT, @project.identifier)
 
-      @repository.fetch_changesets
       @latest_changeset = @repository.changesets.find(:first)
       @latest_log = Indexinglog.find_by_repository_id_and_status(@repository.id, STATUS_SUCCESS)
 
@@ -142,9 +141,8 @@ module ReposearchEngine
       RAILS_DEFAULT_LOGGER.info("Indexing diff: %s" % @repository.url)
       @current_log.message = "Success - diff"
       if @latest_log.changeset_id >= @latest_changeset.id
-        @current_log.status = STATUS_FAILED
-        @latest_status = @current_log.message = "Already indexed: %d" % @latest_changeset.id
-        return false
+        @current_log.message = "Already indexed: %d" % @latest_changeset.id
+        return
       end
 
       RAILS_DEFAULT_LOGGER.info("Diff with: %d and %d" % [@latest_log.changeset_id, @latest_changeset.id, ])

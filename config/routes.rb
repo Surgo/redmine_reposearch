@@ -21,7 +21,7 @@ ActionController::Routing::Routes.draw do |map|
     reposearch.connect 'reposearch', :action => 'search'
   end
   map.with_options :controller => 'repoindexer' do |repoindexer|
-    repoindexer.connect 'repoindexer/init/:id', :action => 'indexing', :init => true
-    repoindexer.connect 'repoindexer/crawl/:id', :action => 'indexing', :init => false
+    repoindexer.connect 'repoindexer/init/:id', :action => 'indexing', :conditions => {:method => :get}, :init => true
+    repoindexer.connect 'repoindexer/crawl/:id', :action => 'indexing', :conditions => {:method => :get}, :init => false
   end
 end
