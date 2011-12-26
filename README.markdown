@@ -23,8 +23,7 @@ Install
 For Ubuntu.
 
 1. Install Hyper Estraier / Ruby Binding
-
-   `sudo apt-get install hyperestraier libestraier-ruby`
+       sudo apt-get install hyperestraier libestraier-ruby`
 2. [Install plugin to redmine](http://www.redmine.org/projects/redmine/wiki/Plugins)
 
 That's all!
