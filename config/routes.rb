@@ -5,8 +5,6 @@ ActionController::Routing::Routes.draw do |map|
   end
   map.with_options :controller => 'repoindexer' do |repoindexer|
     repoindexer.connect 'repoindexer/init/:id', :action => 'indexing', :init => true
-    repoindexer.connect 'repoindexer/init', :action => 'indexing', :init => true
-    repoindexer.connect 'repoindexer/indexing/:id', :action => 'indexing', :init => false
-    repoindexer.connect 'repoindexer/indexing', :action => 'indexing', :init => false
+    repoindexer.connect 'repoindexer/crawl/:id', :action => 'indexing', :init => false
   end
 end

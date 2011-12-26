@@ -1,45 +1,53 @@
 Redmine reposearch plugin
--------------------------
+=========================
 
-Full-text search of a repository plugin.
+Add full-text search engine to repositories.
 
 Authors
 -------
 
- * Kosei Kitahara (@Surgo)
+ * [Kosei Kitahara](http://surgo.jp/) ([@Surgo](http://twitter.com/Surgo))
 
 Requirements
 ------------
 
 * [Redmine 1.1](http://www.redmine.org/)
 * [Hyper Estraier](http://fallabs.com/hyperestraier/index.html)
-* [Hyper Estraier Ruby Binding](http://fallabs.com/hyperestraier/rubynativeapi/)
+* [Ruby Binding of Hyper Estraier](http://fallabs.com/hyperestraier/rubynativeapi/)
+
+Special Thanks to [Redmine](http://www.redmine.org/) and [FAL Labs](http://fallabs.com/)
 
 Install
 -------
 
 For Ubuntu.
 
-1. Install Hyper Estraier / Hyper Estraier Ruby Binding
+1. Install Hyper Estraier / Ruby Binding
+
    `sudo apt-get install hyperestraier libestraier-ruby`
-2. [Install redmine plugin](http://www.redmine.org/projects/redmine/wiki/Plugins)
+2. [Install plugin to redmine](http://www.redmine.org/projects/redmine/wiki/Plugins)
 
 That's all!
 
-Page / Commands
----------------
+Pages and Commands
+------------------
 
-* http://your.redmine.site/[project]/reposearch -- Search codes in project's / sub-project's accessiable repositories.
-* http://your.redmine.site/reposearch -- Search codes in all accessiable repositories.
-* http://your.redmine.site/repoindexer/init/[project] -- Create / Re-create project's indexes.
-* http://your.redmine.site/repoindexer/init -- Create / Re-create all indexes (take several minutes).
-* http://your.redmine.site/repoindexer/indexing/[project] -- Update project's indexes.
-* http://your.redmine.site/repoindexer/indexing/[project] -- Update all indexes.
+### Pages (for users) ###
 
-Please replace repository commit hooks to commands for 'update project's indexes'.
+* http://redmine.site/[project]/reposearch -- Search codes in project's / sub-project's accessiable repositories.
+* http://redmine.site/reposearch -- Search codes in all accessiable repositories.
 
-Repository
-----------
+### Commands (for SCM) ###
 
- * [github - Surgo / redmine\_reposearch](https://github.com/Surgo/redmine_reposearch)
+* http://redmine.site/repoindexer/init/[project] -- Create / Re-create project's indexes.
+* http://redmine.site/repoindexer/crawl/[project] -- Crawl project's indexes (if updated).
 
+Replace SCM commit hooks to "Crawl project's indexes".
+
+Links
+-----
+
+ * [Project page](http://surgo.github.com/redmine_reposearch/)
+ * [Issues](https://github.com/Surgo/redmine_reposearch/issues)
+ * [Source code](https://github.com/Surgo/redmine_reposearch)
+ * [Documents](https://github.com/Surgo/redmine_reposearch/wiki)

@@ -13,6 +13,7 @@ module ReposearchEngine
 
   STATUS_SUCCESS = 1
   STATUS_FAILED = 0
+  STATUS_REMOVED = -1
 
   ADD_OR_UPDATE = 1
   DELETE = 0
@@ -39,31 +40,27 @@ module ReposearchEngine
 
     def is_open?
       return true if @est_db
-      false
+      return false
     end
 
     def open(mode=MODE_R)
       @latest_status = nil
-      unless File.exist?(@path)
-        FileUtils.mkdir_p(@path)
-      end
+      FileUtils.mkdir_p(@path) unless File.exist?(@path)
       if !is_open?
         @est_db = Database::new
+        RAILS_DEFAULT_LOGGER.info("Open DB: %s" % @path)
         unless @est_db.open(@path, mode)
-          RAILS_DEFAULT_LOGGER.info("Open DB: %s" % path)
           @latest_status = @est_db.err_msg(@est_db.error)
           @est_db = nil
           raise EstraierError.new("Open failed - '%s'" % @latest_status)
-          return false
         end
       end
-      return true
     end
 
     def close
       @latest_status = nil
       if is_open?
-        RAILS_DEFAULT_LOGGER.info("Close DB: %s" % path)
+        RAILS_DEFAULT_LOGGER.info("Close DB: %s" % @path)
         unless @est_db.close()
           @latest_status = @est_db.err_msg(@est_db.error)
           @est_db = nil
@@ -71,26 +68,24 @@ module ReposearchEngine
         end
       end
       @est_db = nil
-      return 
     end
 
     def remove
+      RAILS_DEFAULT_LOGGER.info("Remove DB: %s" % @path)
       close()
       FileUtils.rm_r(Dir.glob(File.join(@path, '*')), {:force=>true})
+      Indexinglog.update_all("status = #{STATUS_REMOVED}", {:repository_id => @repository.id, })
     end
 
     def indexing(init=false)
       @latest_status = nil
 
-      unless @latest_changeset
-        @latest_status = "Changeset not found."
-        return false
-      end
+      raise EstraierError.new("Changeset not found.") unless @latest_changeset
 
       @current_log = Indexinglog.new
       @current_log.repository = @repository
       @current_log.changeset = @latest_changeset
-      @current_log.save
+      @current_log.save!
 
       @current_log.status = STATUS_SUCCESS
       if init or not @latest_log
@@ -98,13 +93,13 @@ module ReposearchEngine
       else
         indexing_diff()
       end
-      @current_log.save
-      return @latest_status ? false : true
+      @current_log.save!
+
+      raise EstraierError.new("Indexing failed: %s" % @latest_status) if @latest_status
     end
 
     def optimize
-      @latest_status = nil
-      @est_db.optimize(0)
+      raise EstraierError.new("Optimize failed: %s" % @est_db.err_msg(@est_db.error)) unless @est_db.optimize(0)
     end
 
     private
@@ -121,19 +116,20 @@ module ReposearchEngine
         end
       end
 
-      RAILS_DEFAULT_LOGGER.info("Indexing all: %s" % @name)
+      RAILS_DEFAULT_LOGGER.info("Indexing all: %s" % @repository.url)
       @current_log.message = "Success - all"
       walk(@repository.entries())
     end
 
     def indexing_diff
-      RAILS_DEFAULT_LOGGER.debug("Indexing diff: %s" % @name)
+      RAILS_DEFAULT_LOGGER.info("Indexing diff: %s" % @repository.url)
       @current_log.message = "Success - diff"
       if @latest_log.changeset_id >= @latest_changeset.id
         @current_log.status = STATUS_FAILED
         @latest_status = @current_log.message = "Already indexed: %d" % @latest_changeset.id
         return false
       end
+
       RAILS_DEFAULT_LOGGER.info("Diff with: %d and %d" % [@latest_log.changeset_id, @latest_changeset.id, ])
       changesets = project.repository.changesets.find(
         :all, :conditions => {:id => @latest_log.changeset_id..@latest_changeset.id, },
@@ -194,10 +190,9 @@ module ReposearchEngine
       doc.add_attr('@uri', uri)
       doc.add_attr('@title', title)
       doc.add_text(text)
-      if type
-        doc.add_attr('@type', type)
-      end
+      doc.add_attr('@type', type) if type
       unless @est_db.put_doc(doc, Estraier::Database::PDCLEAN)
+        RAILS_DEFAULT_LOGGER.warn("Document put failed - %s" % @est_db.err_msg(@est_db.error))
         @current_log.status = STATUS_FAILED
         @latest_status = @current_log.message = "Document put failed - %s" % @est_db.err_msg(@est_db.error)
       end
@@ -247,10 +242,8 @@ module ReposearchEngine
       phrase = tokens.join(" OR ")
     end
     condition.set_phrase(phrase)
-    if type
-      condition.add_attr("@type EQ %s" % type)
-    end
-    RAILS_DEFAULT_LOGGER.info(phrase)
+    condition.add_attr("@type EQ %s" % type) if type
+    RAILS_DEFAULT_LOGGER.debug("Search phrase: %s" % phrase)
     return Estraier::Database::search_meta(dbs.each.map{|db| db.est_db}, condition)
   end
 

@@ -16,7 +16,8 @@ class ReposearchController < ApplicationController
       @docs = Hash.new
       if @results
          @doc_pages = Paginator.new self, @results.doc_num, per_page_option, params['page']
-         for i in @doc_pages.current.offset...[(@doc_pages.current.offset + @doc_pages.items_per_page), @results.doc_num].min
+         for i in @doc_pages.current.offset...
+             [(@doc_pages.current.offset + @doc_pages.items_per_page), @results.doc_num].min
            dbidx = @results.get_dbidx(i)
            next unless dbidx
            doc = @dbs[dbidx].est_db.get_doc(@results.get_doc_id(i), 0)
@@ -78,15 +79,12 @@ class ReposearchController < ApplicationController
   def open_dbs
     @dbs = []
     @projects.each do |project|
-      next unless project.repository 
-      db = ReposearchEngine::IndexDatabase.new project
-      if db.latest_log
-        @dbs.push(db)
-      end
+      next unless project.repository
+      db = ReposearchEngine::IndexDatabase.new(project)
+      next unless db.latest_log
+      @dbs.push(db)
     end
-    unless @dbs
-      render_404
-    end
+    render_404 unless @dbs
     ReposearchEngine.open_dbs(@dbs)
   end
 
@@ -100,7 +98,7 @@ class ReposearchController < ApplicationController
     render_error l(:error_estraier_command_failed, exception.message)
     return false
   rescue ActionController::DoubleRenderError
-    render :nothing => true, :status => 500
+    render_error l(:error_estraier_command_failed, exception.message)
     return false
   end
 

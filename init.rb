@@ -5,7 +5,7 @@ Redmine::Plugin.register :redmine_reposearch do
   author 'Kosei Kitahara'
   description 'Full-text search of a repository plugin.'
   version '0.0.1'
-  url 'https://github.com/Surgo/redmine_reposearch'
+  url 'http://surgo.github.com/redmine_reposearch/'
   author_url 'http://surgo.jp/'
 
   project_module :reposearch do
