@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 Links
 -----
 
- * `Project page <http://surgo.github.com/redmine_reposearch/>`_
- * `Issues <https://github.com/Surgo/redmine_reposearch/issues>`_
- * `Source code <https://github.com/Surgo/redmine_reposearch>`_
- * `Documents <https://github.com/Surgo/redmine_reposearch/wiki>`_
+* `Project page <http://surgo.github.com/redmine_reposearch/>`_
+* `Issues <https://github.com/Surgo/redmine_reposearch/issues>`_
+* `Source code <https://github.com/Surgo/redmine_reposearch>`_
+* `Documents <https://github.com/Surgo/redmine_reposearch/wiki>`_
