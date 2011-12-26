@@ -1,6 +1,14 @@
 # English strings go here for Rails i18n
 en:
   label_reposearch: "RepoSearch"
-  label_not_found: "Did not match any documents."
+  label_reposearch_plural: "RepoSearch"
+
+  project_module_reposearch: "RepoSearch"
+
+  permission_reposearch_search: "Search repositories"
+  permission_reposearch_indexing: "Indexing repositories"
+
   error_estraier_command_failed: "An error occurred when trying to access the HyperEstraier: %{value}"
   description_search: "Searchfield"
+  button_search: "Search"
+  label_not_found: "Did not match any documents."

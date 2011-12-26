@@ -1,6 +1,14 @@
 # Japanese strings go here for Rails i18n
 ja:
   label_reposearch: "リポジトリ検索"
-  label_not_found: "一致する情報は見つかりませんでした"
+  label_reposearch_plural: "リポジトリ検索"
+
+  project_module_reposearch: "リポジトリ検索"
+
+  permission_reposearch_search: "リポジトリの検索"
+  permission_reposearch_indexing: "リポジトリのインデックス作成"
+
+  label_not_found: "一致する情報は見つかりませんでした。"
+  button_search: "検索"
   error_estraier_command_failed: "HyperEstraier へのアクセス中にエラーが発生しました: %{value}"
   description_search: "検索キーワード"
