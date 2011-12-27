@@ -127,7 +127,7 @@ module ReposearchEngine
           if entry.is_dir?
             walk(@repository.entries(entry.path))
           elsif entry.is_file?
-            add_or_update_index(entry.path)
+            add_or_update_index(entry)
           end
         end
       end
@@ -169,32 +169,34 @@ module ReposearchEngine
       end
       actions.each do |path, action|
         if action == ADD_OR_UPDATE
-          add_or_update_index(path)
+          add_or_update_index(@repository.entry(path))
         else
-          delete_index(path)
+          delete_index(@repository.entry(path))
         end
       end
     end
 
-    def add_or_update_index(path)
-      RAILS_DEFAULT_LOGGER.debug("Add / Update: %s" % path)
+    def add_or_update_index(entry)
+      return if not entry or entry.is_dir?
+      RAILS_DEFAULT_LOGGER.debug("Add / Update: %s" % entry.path)
       uri = url_for(:controller => 'repositories',
                     :action => 'entry',
                     :id => @project,
-                    :path => @repository.relative_path(path),
+                    :path => @repository.relative_path(entry.path),
                     :only_path => true)
       return unless uri
-      content = @repository.cat(path)
-      mimetype = Redmine::MimeType.of(path)
-      put_document(uri, path, content, mimetype)
+      content = @repository.cat(entry.path)
+      mimetype = Redmine::MimeType.of(entry.path)
+      put_document(uri, entry.path, content, mimetype)
     end
 
-    def delete_index(path)
-      RAILS_DEFAULT_LOGGER.debug("Delete: %s" % path)
+    def delete_index(entry)
+      return if not entry or entry.is_dir?
+      RAILS_DEFAULT_LOGGER.debug("Delete: %s" % entry.path)
       uri = url_for(:controller => 'repositories',
                     :action => 'entry',
                     :id => @project,
-                    :path => @repository.relative_path(path),
+                    :path => @repository.relative_path(entry.path),
                     :only_path => true)
       return unless uri
       put_document(uri, "", "", "")
