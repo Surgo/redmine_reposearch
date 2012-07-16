@@ -1,16 +1,16 @@
 # Redmine reposearch plugin
 # Copyright (C) Kosei Kitahara.
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -19,29 +19,25 @@ class ReposearchController < ApplicationController
   unloadable
 
   menu_item :reposearch
-
-  before_filter :find_optional_project
-  before_filter :find_projects
-  before_filter :parse_queries
-  before_filter :open_dbs
-  after_filter :close_dbs
+  before_filter :find_project
+  before_filter :open_db
+  before_filter :authorize
+  before_filter :parse_query
+  before_filter :parse_target
+  after_filter :close_db
 
   rescue_from ReposearchEngine::EstraierError, :with => :estraier_command_failed
 
 
   def search
-    if !@tokens.empty?
-      @results = ReposearchEngine.search(@dbs, @tokens)
-      @docs = Hash.new
+    unless @tokens.empty?
+      @results = @db.search(@tokens, @target.identifier, @rev, nil, @all_words)
+      @docs = []
       if @results
-         @doc_pages = Paginator.new self, @results.doc_num, per_page_option, params['page']
+         @doc_pages = Paginator.new(self, @results.doc_num, per_page_option, params['page'])
          for i in @doc_pages.current.offset...
              [(@doc_pages.current.offset + @doc_pages.items_per_page), @results.doc_num].min
-           dbidx = @results.get_dbidx(i)
-           next unless dbidx
-           doc = @dbs[dbidx].est_db.get_doc(@results.get_doc_id(i), 0)
-           next unless doc
-           @docs[doc] = @dbs[dbidx].project
+           @docs.push(@db.est_db.get_doc(@results.get_doc_id(i), 0))
          end
       end
     end
@@ -50,73 +46,57 @@ class ReposearchController < ApplicationController
 
   private
 
-  def find_optional_project
-    return true unless params[:id]
-    @project = Project.active.find(params[:id])
-    check_project_privacy
-  rescue ActiveRecord::RecordNotFound
-    render_404
+  def open_db
+    @db = ReposearchEngine::IndexDatabase.new(@project)
+    (render_404; return false) unless @db.repository and @db.repositories
+    @db.open()
   end
 
-  def find_projects
-    @projects =
-      case params[:scope]
-      when 'all'
-        ReposearchEngine.get_accessible_projects()
-      when 'my_projects'
-        ReposearchEngine.get_my_projects()
-      when 'subprojects'
-        @project ?
-          @project.self_and_descendants.active.has_module(:repository).
-            select{|project| ReposearchEngine.is_accessible(project)}:
-          ReposearchEngine.get_accessible_projects()
-      else
-        @project ?
-          [@project, ] :
-          ReposearchEngine.get_accessible_projects()
-      end
-    unless @projects
-      render_404
+  def close_db
+    @db.close()
+  end
+
+  def parse_query
+    def optimize_query(raw_query)
+      raw_query.strip!
+      raw_query = raw_query.gsub(/　/, " ").gsub(/,/, " ").gsub(/\s+/, " ")
+      return raw_query
     end
-  end
 
-  def parse_queries
-    @query = params[:q] || ""
-    @query.strip!
-    @query = @query.gsub(/　/, " ").gsub(/,/, " ").gsub(/\v/, " ")
+    def generate_token(query)
+      tokens = query.scan(%r{((\s|^)"[\s\w]+"(\s|$)|\S+)}).collect {
+        |m| m.first.gsub(%r{(^\s*"\s*|\s*"\s*$)}, '')}
+      tokens = tokens.uniq.select {|w| w.length > 1 }
+      tokens.slice! 5..-1 if !tokens.empty? and tokens.size > 5
+      return tokens
+    end
+
+    @query = optimize_query(params[:q] || "")
     @all_words = params[:all_words] ? params[:all_words].present? : true
-    @tokens = @query.scan(%r{((\s|^)"[\s\w]+"(\s|$)|\S+)}).collect {|m| m.first.gsub(%r{(^\s*"\s*|\s*"\s*$)}, '')}
-    @tokens = @tokens.uniq.select {|w| w.length > 1 }
-    if !@tokens.empty?
-      @tokens.slice! 5..-1 if @tokens.size > 5
+    @tokens = generate_token(@query)
+    @query = "" if @tokens.empty?
+  end
+
+  def parse_target
+    if params[:target].present?
+      @target = @project.repositories.find_by_identifier_param(params[:target])
     else
-      @query = ""
+      @target = @project.repository
     end
-    @docs = []
-  end
-
-  def open_dbs
-    @dbs = []
-    @projects.each do |project|
-      next unless project.repository
-      db = ReposearchEngine::IndexDatabase.new(project)
-      next unless db.latest_log
-      @dbs.push(db)
+    (render_404; return false) unless @target
+    if (!@target.branches.nil? && @target.branches.length > 0) or (!@target.tags.nil? && @target.tags.length > 0)
+      @rev = (params[:rev].blank? or not params[:rev].has_key? (@target.identifier)) ? \
+        @target.default_branch : params[:rev][@target.identifier].to_s.strip
+    else
+      @rev = nil
     end
-    render_404 unless @dbs
-    ReposearchEngine.open_dbs(@dbs)
-  end
-
-  def close_dbs
-    ReposearchEngine.close_dbs(@dbs)
   end
 
   def estraier_command_failed(exception)
-    ReposearchEngine.close_dbs(@dbs)
-    logger.error("Estraier command failed: %s" % exception.message)
-    render_error l(:error_estraier_command_failed, exception.message)
-    return false
-  rescue ActionController::DoubleRenderError
+    @db.close()
+  rescue ReposearchEngine::EstraierError => e
+    logger.warn("Estraier close failed: %s" % e.message)
+  ensure
     render_error l(:error_estraier_command_failed, exception.message)
     return false
   end

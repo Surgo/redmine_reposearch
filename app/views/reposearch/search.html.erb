@@ -6,8 +6,23 @@
 <%= label_tag "search-input", l(:description_search), :class => "hidden-for-sighted" %>
 <%= text_field_tag 'q', @query, :size => 60, :id => 'search-input' %>
 <%= javascript_tag "Field.focus('search-input')" %>
-<%= project_select_tag %>
+<%= hidden_field_tag 'all_words', '', :id => nil %>
 <label><%= check_box_tag 'all_words', 1, @all_words %> <%= l(:label_all_words) %></label>
+</p>
+<p>
+<ul>
+<% @db.repositories.each do |repository| %>
+<% target_repository = (@target.identifier == repository.identifier) %>
+<li><label><%= radio_button_tag 'target', repository.identifier, target_repository %> <%= repository.name %></label>
+<% if (!repository.branches.nil? && repository.branches.length > 0) or (!repository.tags.nil? && repository.tags.length > 0) -%>
+=&gt;&nbsp;<%= select_tag ("rev[%s]" % repository.identifier), options_for_select(
+    repository.branches.map { |rev|  ["%s@%s" % [rev, l(:label_branch)], rev]} \
+    + repository.tags.map { |rev|  ["%s@%s" % [rev, l(:label_tag)], rev]},
+    target_repository ? @rev : nil), :id => 'revision' %>
+<% end %>
+</li>
+<% end %>
+</ul>
 </p>
 <p><%= submit_tag l(:button_search), :name => 'submit' %></p>
 <% end %>
@@ -16,11 +31,15 @@
 <% if @results and @docs.any? %>
 <h3><%= l(:label_result_plural) %> (<%= @results.doc_num %>)</h3>
 <dl id="search-results">
-<% @docs.each do |doc, project| %>
-  <dt>[<%= link_to project.name, {:controller => 'projects', :action => 'index', :id => project, }%>]
-      &nbsp;<%= link_to doc.attr("@title"), {:controller => 'repositories', :action => 'entry',
-                                             :id => project, :path => to_path_param(doc.attr("@title")), } %></dt>
-  <dd><span class="description"><%= highlight_tokens(h(doc.texts[0]), @tokens) %></span>
+<% for doc in @docs %>
+<dt><%= link_to doc.attr("@title"), {
+    :controller => 'repositories',
+    :action => 'entry',
+    :id => @project,
+    :repository_id => doc.attr("@repository.identifier"),
+    :rev => doc.attr("@rev"),
+    :path => to_path_param(doc.attr("@title")), } %></dt>
+  <dd><span class="description"><%= highlight_tokens(h(doc.texts[0]), @tokens) %></span></dd>
 <% end %>
 </dl>
 <p class="pagination"><%= pagination_links_full @doc_pages, @results.doc_num %></p>
