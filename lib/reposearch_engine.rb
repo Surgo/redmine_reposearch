@@ -42,8 +42,12 @@ module ReposearchEngine
 
     def initialize(project)
       @project = project
-      @repository = @project.repository
-      @repositories = @project.repositories.select { |repository| repository.supports_cat? }
+      if @repository.respond_to?(:repositories)
+        @repositories = @project.repositories.select { |repository| repository.supports_cat? }
+      else
+        @repositories = [@project.repository]
+      end
+      @repositories = @repositories.select { |repository| repository.supports_cat? }
       @path = File.join(DATABASE_ROOT, @project.identifier)
 
       @est_db = nil

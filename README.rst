@@ -3,6 +3,20 @@ Redmine reposearch plugin
 
 Add full-text search engine to repositories.
 
+Requirements
+------------
+
+* `Redmine`_  (>=1.4.x)
+* `Hyper Estraier`_
+* `Ruby Binding of Hyper Estraier`_
+
+Special Thanks to `Redmine`_ and `FAL Labs`_.
+
+.. _Redmine: http://www.redmine.org/
+.. _Hyper Estraier: http://fallabs.com/hyperestraier/index.html
+.. _Ruby Binding of Hyper Estraier: http://fallabs.com/hyperestraier/rubynativeapi/
+.. _FAL Labs: http://fallabs.com/
+
 Authors
 -------
 

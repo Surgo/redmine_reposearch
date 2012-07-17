@@ -21,7 +21,7 @@ Redmine::Plugin.register :redmine_reposearch do |plugin|
   plugin.name 'Redmine Reposearch plugin'
   plugin.author 'Kosei Kitahara'
   plugin.description 'Full-text search of a repository plugin.'
-  plugin.version '0.0.4.dev'
+  plugin.version '0.0.4'
   plugin.url 'http://surgo.github.com/redmine_reposearch/'
   plugin.author_url 'http://surgo.jp/'
 

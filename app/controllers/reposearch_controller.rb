@@ -17,13 +17,15 @@
 
 class ReposearchController < ApplicationController
   unloadable
-
+  layout 'base'
   menu_item :reposearch
+
   before_filter :find_project
-  before_filter :open_db
   before_filter :authorize
+  before_filter :open_db
   before_filter :parse_query
   before_filter :parse_target
+
   after_filter :close_db
 
   rescue_from ReposearchEngine::EstraierError, :with => :estraier_command_failed
@@ -46,9 +48,15 @@ class ReposearchController < ApplicationController
 
   private
 
+  def find_project
+    @project = Project.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
   def open_db
     @db = ReposearchEngine::IndexDatabase.new(@project)
-    (render_404; return false) unless @db.repository and @db.repositories
+    (render_404; return false) if @db.repositories.size <= 0
     @db.open()
   end
 
@@ -66,7 +74,7 @@ class ReposearchController < ApplicationController
     def generate_token(query)
       tokens = query.scan(%r{((\s|^)"[\s\w]+"(\s|$)|\S+)}).collect {
         |m| m.first.gsub(%r{(^\s*"\s*|\s*"\s*$)}, '')}
-      tokens = tokens.uniq.select {|w| w.length > 1 }
+      tokens = tokens.uniq.select {|w| w.size > 1 }
       tokens.slice! 5..-1 if !tokens.empty? and tokens.size > 5
       return tokens
     end
@@ -84,7 +92,7 @@ class ReposearchController < ApplicationController
       @target = @project.repository
     end
     (render_404; return false) unless @target
-    if (!@target.branches.nil? && @target.branches.length > 0) or (!@target.tags.nil? && @target.tags.length > 0)
+    if (!@target.branches.nil? && @target.branches.size > 0) or (!@target.tags.nil? && @target.tags.size > 0)
       @rev = (params[:rev].blank? or not params[:rev].has_key? (@target.identifier)) ? \
         @target.default_branch : params[:rev][@target.identifier].to_s.strip
     else

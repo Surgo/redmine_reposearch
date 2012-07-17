@@ -47,8 +47,7 @@ class RepoindexerController < SysController
   def open_db
     @db = ReposearchEngine::IndexDatabase.new(@project)
     @db.remove() if params[:init]
-    render :text => 'Project not found.', :status => 404 unless @db.repository and @db.repositories
-    unless @db.repository and @db.repositories
+    if @db.repositories.size <= 0
       render :text => 'Project has not (supported) repository.', :status => 404
       return false
     end
