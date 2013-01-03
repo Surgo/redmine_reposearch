@@ -1,32 +1,20 @@
-Redmine reposearch plugin
-=========================
+= Redmine reposearch plugin
 
 Add full-text search engine to repositories.
 
-Requirements
-------------
+== Requirements
 
-* `Redmine`_  (>=1.4.x)
-* `Hyper Estraier`_
-* `Ruby Binding of Hyper Estraier`_
+* {Redmine}[http://www.redmine.org/] (>=2.0.x)
+* {Hyper Estraier}[http://fallabs.com/hyperestraier/index.html]
+* {Ruby Binding of Hyper Estraier}[http://fallabs.com/hyperestraier/rubynativeapi/]
 
-Special Thanks to `Redmine`_ and `FAL Labs`_.
+Special Thanks to Redmine and FAL Labs.
 
-.. _Redmine: http://www.redmine.org/
-.. _Hyper Estraier: http://fallabs.com/hyperestraier/index.html
-.. _Ruby Binding of Hyper Estraier: http://fallabs.com/hyperestraier/rubynativeapi/
-.. _FAL Labs: http://fallabs.com/
+== Authors
 
-Authors
--------
+* {Kosei Kitahara}[http://surgo.jp/] ({@Surgo}[http://twitter.com/Surgo])
 
-* `Kosei Kitahara`_ (`@Surgo`_)
-
-.. _Kosei Kitahara: http://surgo.jp/
-.. _@Surgo: http://twitter.com/Surgo
-
-LICENSE
--------
+== LICENSE
 
 Copyright (C) Kosei Kitahara.
 
@@ -44,10 +32,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-Links
------
+== Links
 
-* `Project page <http://surgo.github.com/redmine_reposearch/>`_
-* `Issues <https://github.com/Surgo/redmine_reposearch/issues>`_
-* `Source code <https://github.com/Surgo/redmine_reposearch>`_
-* `Documents <https://github.com/Surgo/redmine_reposearch/wiki>`_
+* {Project page}[http://surgo.github.com/redmine_reposearch/]
+* {Issues}[https://github.com/Surgo/redmine_reposearch/issues]
+* {Source code}[https://github.com/Surgo/redmine_reposearch]
+* {Documents}[https://github.com/Surgo/redmine_reposearch/wiki]
