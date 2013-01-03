@@ -4,7 +4,7 @@ Add full-text search engine to repositories.
 
 == Requirements
 
-* {Redmine}[http://www.redmine.org/] (>=2.0.x)
+* {Redmine}[http://www.redmine.org/] (>=2.1.x)
 * {Hyper Estraier}[http://fallabs.com/hyperestraier/index.html]
 * {Ruby Binding of Hyper Estraier}[http://fallabs.com/hyperestraier/rubynativeapi/]
 
