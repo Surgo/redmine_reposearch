@@ -17,9 +17,8 @@
 
 require "estraier"
 include Estraier
-include ActionController::UrlWriter
 
-module ReposearchEngine
+module RedmineReposearch
   FILE_MAX_SIZE = Setting.file_max_size_displayed.to_i.kilobyte
   DATABASE_ROOT = ENV['RAILS_VAR'] ?
     File.join(ENV['RAILS_VAR'], 'reposearch') :
