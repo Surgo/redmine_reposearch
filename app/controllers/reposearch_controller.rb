@@ -28,7 +28,7 @@ class ReposearchController < ApplicationController
 
   after_filter :close_db
 
-  rescue_from ReposearchEngine::EstraierError, :with => :estraier_command_failed
+  rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
 
 
   def search
@@ -55,7 +55,7 @@ class ReposearchController < ApplicationController
   end
 
   def open_db
-    @db = ReposearchEngine::IndexDatabase.new(@project)
+    @db = RedmineReposearch::IndexDatabase.new(@project)
     (render_404; return false) if @db.repositories.size <= 0
     @db.open()
   end
@@ -93,7 +93,7 @@ class ReposearchController < ApplicationController
     end
     (render_404; return false) unless @target
     if (!@target.branches.nil? && @target.branches.size > 0) or (!@target.tags.nil? && @target.tags.size > 0)
-      @rev = (params[:rev].blank? or not params[:rev].has_key? (@target.identifier)) ? \
+      @rev = (params[:rev].blank? or not params[:rev].has_key?(@target.identifier)) ? \
         @target.default_branch : params[:rev][@target.identifier].to_s.strip
     else
       @rev = nil

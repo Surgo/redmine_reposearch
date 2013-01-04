@@ -1,2 +1,2 @@
 source :rubygems
-gem "estraier"
+# gem "estraier"

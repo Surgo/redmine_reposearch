@@ -17,6 +17,7 @@
 
 require "estraier"
 include Estraier
+include Rails.application.routes.url_helpers
 
 module RedmineReposearch
   FILE_MAX_SIZE = Setting.file_max_size_displayed.to_i.kilobyte
@@ -60,9 +61,9 @@ module RedmineReposearch
       else
         phrase = tokens.join(" OR ")
       end
-      RAILS_DEFAULT_LOGGER.info("Search phrase: %s" % phrase)
+      Rails.logger.info("Search phrase: %s" % phrase)
       condition.set_phrase(phrase)
-      RAILS_DEFAULT_LOGGER.info("Search conditions: %s, %s, %s" % [
+      Rails.logger.info("Search conditions: %s, %s, %s" % [
                                  repository, rev, content_type])
       condition.add_attr("@repository STREQ %s" % repository) if repository
       condition.add_attr("@rev STREQ %s" % rev) if rev
@@ -78,46 +79,47 @@ module RedmineReposearch
     def open(mode=MODE_R)
       FileUtils.mkdir_p(@path) unless File.exist?(@path)
       if !is_open?
-        @est_db = Estraier::Database::new()
-        RAILS_DEFAULT_LOGGER.debug("Open DB: %s" % @path)
+        @est_db = Estraier::Database::new
+        Rails.logger.debug("Open DB: %s" % @path)
         unless @est_db.open(@path, mode)
+          err_msg = @est_db.err_msg(@est_db.error)
+          @est_db = nil
           handle_estraier_error(
-            "Open failed (Need to create indexes) - '%s'" % @est_db.err_msg(@est_db.error))
+            "Open failed (Need to create indexes) - '%s'" % err_msg)
         end
       end
     end
 
     def close
       if is_open?
-        RAILS_DEFAULT_LOGGER.debug("Close DB: %s" % @path)
-        unless @est_db.close()
-          handle_estraier_error(
-            "Close failed (Try to restart) - '%s'" % @est_db.err_msg(@est_db.error))
+        Rails.logger.debug("Close DB: %s" % @path)
+        unless @est_db.close
+          Rails.logger.error("Close failed (Try to restart) - '%s'" % @est_db.err_msg(@est_db.error))
         end
       end
       @est_db = nil
     end
 
     def remove
-      close()
+      close
       @repositories.each do |repository|
-        RAILS_DEFAULT_LOGGER.info("Remove logs: %s - %s" % [
+        Rails.logger.info("Remove logs: %s - %s" % [
                                   @project.name, repository.identifier])
         Indexinglog.delete_all(['repository_id = ?', repository.id])
       end
-      RAILS_DEFAULT_LOGGER.info("Remove DB: %s" % @path)
+      Rails.logger.info("Remove DB: %s" % @path)
       FileUtils.rm_r(Dir.glob(File.join(@path, '*')), {:force=>true})
     end
 
     def optimize
-      RAILS_DEFAULT_LOGGER.debug("Optimize DB: %s" % @path)
+      Rails.logger.debug("Optimize DB: %s" % @path)
       raise EstraierError.new("Optimize failed: %s" % @est_db.err_msg(@est_db.error)) \
         unless @est_db.optimize(Estraier::Database::OPTNOPURGE)
     end
 
     def indexing
       @repositories.each do |repository|
-        RAILS_DEFAULT_LOGGER.info("Fetch changesets: %s - %s" % [
+        Rails.logger.info("Fetch changesets: %s - %s" % [
                                   @project.name, repository.identifier])
         repository.fetch_changesets
         repository.reload.changesets.reload
@@ -125,7 +127,7 @@ module RedmineReposearch
         latest_changeset = repository.changesets.find(:first)
         next if not latest_changeset
 
-        RAILS_DEFAULT_LOGGER.debug("Latest revision: %s - %s - %s" % [
+        Rails.logger.debug("Latest revision: %s - %s - %s" % [
                                    @project.name, repository.identifier,
                                    latest_changeset.revision])
         latest_indexed = Indexinglog.find_by_repository_id_and_status(
@@ -140,7 +142,7 @@ module RedmineReposearch
           add_log(repository, latest_changeset, STATUS_FAIL, e.message)
         else
           add_log(repository, latest_changeset, STATUS_SUCCESS)
-          RAILS_DEFAULT_LOGGER.info("Successfully indexed: %s - %s - %s" % [
+          Rails.logger.info("Successfully indexed: %s - %s - %s" % [
                                     @project.name, repository.identifier,
                                     latest_changeset.revision])
         end
@@ -150,8 +152,8 @@ module RedmineReposearch
     private
 
     def handle_estraier_error(err_msg)
-      RAILS_DEFAULT_LOGGER.error(err_msg)
-      close()
+      Rails.logger.error(err_msg)
+      close
       raise EstraierError.new(err_msg)
     end
 
@@ -176,21 +178,21 @@ module RedmineReposearch
         end
       end
 
-      RAILS_DEFAULT_LOGGER.info("Indexing all: %s" % [repository.identifier])
+      Rails.logger.info("Indexing all: %s" % [repository.identifier])
       if repository.branches
         repository.branches.each do |branch|
-          RAILS_DEFAULT_LOGGER.debug("Walking in branch: %s - %s" % [
+          Rails.logger.debug("Walking in branch: %s - %s" % [
                                     repository.identifier, branch])
           walk(repository, branch, repository.entries(nil, branch))
         end
       else
-        RAILS_DEFAULT_LOGGER.debug("Walking in branch: %s - %s" % [
+        Rails.logger.debug("Walking in branch: %s - %s" % [
                                   repository.identifier, "[NOBRANCH]"])
         walk(repository, nil, repository.entries(nil, nil))
       end
       if repository.tags
         repository.tags.each do |tag|
-          RAILS_DEFAULT_LOGGER.debug("Walking in tag: %s - %s" % [
+          Rails.logger.debug("Walking in tag: %s - %s" % [
                                     repository.identifier, tag])
           walk(repository, tag, repository.entries(nil, tag))
         end
@@ -230,20 +232,20 @@ module RedmineReposearch
       end
 
       if diff_from.id >= diff_to.id
-        RAILS_DEFAULT_LOGGER.info("Already indexed: %s (from: %s to %s)" % [
+        Rails.logger.info("Already indexed: %s (from: %s to %s)" % [
                                 repository.identifier,
                                 diff_from.id, diff_to.id])
         return
       end
 
-      RAILS_DEFAULT_LOGGER.info("Indexing diff: %s (from: %s to %s)" % [
+      Rails.logger.info("Indexing diff: %s (from: %s to %s)" % [
                                 repository.identifier,
                                 diff_from.id, diff_to.id])
 
-      RAILS_DEFAULT_LOGGER.info("Indexing all: %s" % [repository.identifier])
+      Rails.logger.info("Indexing all: %s" % [repository.identifier])
       if repository.branches
         repository.branches.each do |branch|
-          RAILS_DEFAULT_LOGGER.debug("Walking in branch: %s - %s" % [
+          Rails.logger.debug("Walking in branch: %s - %s" % [
                                     repository.identifier, branch])
           walk(repository, branch,
                repository.latest_changesets("", branch, diff_to.id - diff_from.id)\
@@ -251,7 +253,7 @@ module RedmineReposearch
 
         end
       else
-        RAILS_DEFAULT_LOGGER.debug("Walking in branch: %s - %s" % [
+        Rails.logger.debug("Walking in branch: %s - %s" % [
                                   repository.identifier, "[NOBRANCH]"])
         walk(repository, nil,
              repository.latest_changesets("", nil, diff_to.id - diff_from.id)\
@@ -259,7 +261,7 @@ module RedmineReposearch
       end
       if repository.tags
         repository.tags.each do |tag|
-          RAILS_DEFAULT_LOGGER.debug("Walking in tag: %s - %s" % [
+          Rails.logger.debug("Walking in tag: %s - %s" % [
                                     repository.identifier, tag])
           walk(repository, tag,
                repository.latest_changesets("", tag, diff_to.id - diff_from.id)\
@@ -286,7 +288,7 @@ module RedmineReposearch
 
       doc = get_doc(uri)
       if not doc or delete_doc(uri)
-        RAILS_DEFAULT_LOGGER.info("Add doc: %s" % uri)
+        Rails.logger.info("Add doc: %s" % uri)
         doc = Estraier::Document::new
         doc.add_attr('@uri', uri)
         doc.add_attr('@title', entry.path)
@@ -296,7 +298,7 @@ module RedmineReposearch
         doc.add_attr('@content_type', content_type) if content_type
         doc.add_text(text)
         unless @est_db.put_doc(doc, Estraier::Database::PDCLEAN)
-          RAILS_DEFAULT_LOGGER.warn("Document put failed - %s" % @est_db.err_msg(@est_db.error))
+          Rails.logger.warn("Document put failed - %s" % @est_db.err_msg(@est_db.error))
         end
       end
     end
@@ -304,14 +306,14 @@ module RedmineReposearch
     def get_doc(uri)
       id = @est_db.uri_to_id(uri)
       return nil if id < 0
-      RAILS_DEFAULT_LOGGER.info("Get doc: %s (%s)" % [uri, id])
+      Rails.logger.info("Get doc: %s (%s)" % [uri, id])
       return @est_db.get_doc(id, Estraier::Database::GDNOTEXT)
     end
 
     def delete_doc(uri)
       id = @est_db.uri_to_id(uri)
       return nil if id < 0
-      RAILS_DEFAULT_LOGGER.info("Delete doc: %s (%s)" % [uri, id])
+      Rails.logger.info("Delete doc: %s (%s)" % [uri, id])
       return @est_db.out_doc(id, Estraier::Database::ODCLEAN)
     end
   end

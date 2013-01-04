@@ -1,4 +1,4 @@
-#p Redmine reposearch plugin
+# Redmine reposearch plugin
 # Copyright (C) Kosei Kitahara.
 #
 # This program is free software; you can redistribute it and/or
@@ -24,7 +24,7 @@ class RepoindexerController < SysController
   after_filter :close_db
 
   rescue_from Redmine::Scm::Adapters::CommandFailed, :with => :scm_command_failed
-  rescue_from ReposearchEngine::EstraierError, :with => :estraier_command_failed
+  rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
 
 
   def indexing
@@ -38,20 +38,27 @@ class RepoindexerController < SysController
   private
 
   def find_project
-    @project = Project.active.has_module(:reposearch).find(params[:id])
+    scope = Project.active.has_module(:repository)
+    @project = nil
+    if params[:id].to_s =~ /^\d*$/
+      @project = scope.find(params[:id])
+    else
+      @project = scope.find_by_identifier(params[:id])
+    end
+    raise ActiveRecord::RecordNotFound unless @project
   rescue ActiveRecord::RecordNotFound
     render :text => 'Project not found.', :status => 404
     return false
   end
 
   def open_db
-    @db = ReposearchEngine::IndexDatabase.new(@project)
+    @db = RedmineReposearch::IndexDatabase.new(@project)
     @db.remove() if params[:init]
     if @db.repositories.size <= 0
       render :text => 'Project has not (supported) repository.', :status => 404
       return false
     end
-    @db.open(ReposearchEngine::MODE_W)
+    @db.open(RedmineReposearch::MODE_W)
   end
 
   def close_db
@@ -60,7 +67,7 @@ class RepoindexerController < SysController
 
   def handle_error(err_msg)
     @db.close()
-  rescue ReposearchEngine::EstraierError => e
+  rescue RedmineReposearch::EstraierError => e
     logger.warn("Estraier close failed: %s" % e.message)
   ensure
     logger.error(err_msg)

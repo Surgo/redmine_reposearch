@@ -15,19 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-ActionController::Routing::Routes.draw do |map|
-  map.with_options :controller => 'reposearch' do |reposearch|
-    reposearch.connect 'projects/:id/reposearch',
-      :action => 'search'
-  end
-  map.with_options :controller => 'repoindexer' do |repoindexer|
-    repoindexer.connect 'repoindexer/init/:id',
-      :action => 'indexing',
-      :conditions => {:method => :get},
-      :init => true
-    repoindexer.connect 'repoindexer/crawl/:id',
-      :action => 'indexing',
-      :conditions => {:method => :get},
-      :init => false
-  end
+RedmineApp::Application.routes.draw do
+  match 'projects/:id/reposearch', :controller => 'reposearch',
+    :action => 'search', :via => :get
+  match 'repoindexer/init/:id', :to => 'repoindexer#indexing',
+    :action => 'indexing', :init => true, :via => :get
+  match 'repoindexer/crawl/:id', :to => 'repoindexer#indexing',
+    :action => 'indexing', :init => true, :via => :get
 end
