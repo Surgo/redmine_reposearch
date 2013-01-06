@@ -37,6 +37,8 @@ module RedmineReposearch
   ADD_OR_UPDATE = 1
   DELETE = 0
 
+  MAIN_REPOSITORY_IDENTIFIER = '[main]'
+
   class EstraierError < StandardError; end
   class IndexingError < StandardError; end
 
@@ -107,7 +109,8 @@ module RedmineReposearch
       close
       @repositories.each do |repository|
         Rails.logger.info("Remove logs: %s - %s" % [
-                                  @project.name, repository.identifier])
+                          @project.name,
+                          (repository.identifier or MAIN_REPOSITORY_IDENTIFIER)])
         Indexinglog.delete_all(['repository_id = ?', repository.id])
       end
       Rails.logger.info("Remove DB: %s" % @path)
@@ -123,7 +126,8 @@ module RedmineReposearch
     def indexing
       @repositories.each do |repository|
         Rails.logger.info("Fetch changesets: %s - %s" % [
-                                  @project.name, repository.identifier])
+                          @project.name,
+                          (repository.identifier or MAIN_REPOSITORY_IDENTIFIER)])
         repository.fetch_changesets
         repository.reload.changesets.reload
 
@@ -131,8 +135,9 @@ module RedmineReposearch
         next if not latest_changeset
 
         Rails.logger.debug("Latest revision: %s - %s - %s" % [
-                                   @project.name, repository.identifier,
-                                   latest_changeset.revision])
+                           @project.name,
+                           (repository.identifier or MAIN_REPOSITORY_IDENTIFIER),
+                           latest_changeset.revision])
         latest_indexed = Indexinglog.find_by_repository_id_and_status(
           repository.id, STATUS_SUCCESS, :first)
         begin
@@ -146,8 +151,9 @@ module RedmineReposearch
         else
           add_log(repository, latest_changeset, STATUS_SUCCESS)
           Rails.logger.info("Successfully indexed: %s - %s - %s" % [
-                                    @project.name, repository.identifier,
-                                    latest_changeset.revision])
+                            @project.name,
+                            (repository.identifier or MAIN_REPOSITORY_IDENTIFIER),
+                            latest_changeset.revision])
         end
       end
     end
@@ -181,22 +187,23 @@ module RedmineReposearch
         end
       end
 
-      Rails.logger.info("Indexing all: %s" % [repository.identifier])
+      Rails.logger.info("Indexing all: %s" % [
+                        (repository.identifier or MAIN_REPOSITORY_IDENTIFIER)])
       if repository.branches
         repository.branches.each do |branch|
           Rails.logger.debug("Walking in branch: %s - %s" % [
-                                    repository.identifier, branch])
+                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), branch])
           walk(repository, branch, repository.entries(nil, branch))
         end
       else
         Rails.logger.debug("Walking in branch: %s - %s" % [
-                                  repository.identifier, "[NOBRANCH]"])
+                           (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), "[NOBRANCH]"])
         walk(repository, nil, repository.entries(nil, nil))
       end
       if repository.tags
         repository.tags.each do |tag|
           Rails.logger.debug("Walking in tag: %s - %s" % [
-                                    repository.identifier, tag])
+                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
           walk(repository, tag, repository.entries(nil, tag))
         end
       end
@@ -236,20 +243,21 @@ module RedmineReposearch
 
       if diff_from.id >= diff_to.id
         Rails.logger.info("Already indexed: %s (from: %s to %s)" % [
-                                repository.identifier,
-                                diff_from.id, diff_to.id])
+                          (repository.identifier or MAIN_REPOSITORY_IDENTIFIER),
+                          diff_from.id, diff_to.id])
         return
       end
 
       Rails.logger.info("Indexing diff: %s (from: %s to %s)" % [
-                                repository.identifier,
-                                diff_from.id, diff_to.id])
+                        (repository.identifier or MAIN_REPOSITORY_IDENTIFIER),
+                        diff_from.id, diff_to.id])
 
-      Rails.logger.info("Indexing all: %s" % [repository.identifier])
+      Rails.logger.info("Indexing all: %s" % [
+                        (repository.identifier or MAIN_REPOSITORY_IDENTIFIER)])
       if repository.branches
         repository.branches.each do |branch|
           Rails.logger.debug("Walking in branch: %s - %s" % [
-                                    repository.identifier, branch])
+                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), branch])
           walk(repository, branch,
                repository.latest_changesets("", branch, diff_to.id - diff_from.id)\
                .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
@@ -257,7 +265,7 @@ module RedmineReposearch
         end
       else
         Rails.logger.debug("Walking in branch: %s - %s" % [
-                                  repository.identifier, "[NOBRANCH]"])
+                           (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), "[NOBRANCH]"])
         walk(repository, nil,
              repository.latest_changesets("", nil, diff_to.id - diff_from.id)\
              .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
@@ -265,7 +273,7 @@ module RedmineReposearch
       if repository.tags
         repository.tags.each do |tag|
           Rails.logger.debug("Walking in tag: %s - %s" % [
-                                    repository.identifier, tag])
+                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
           walk(repository, tag,
                repository.latest_changesets("", tag, diff_to.id - diff_from.id)\
                .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
@@ -295,7 +303,7 @@ module RedmineReposearch
         doc = Estraier::Document::new
         doc.add_attr('@uri', uri)
         doc.add_attr('@title', entry.path)
-        doc.add_attr('@repository', repository.identifier)
+        doc.add_attr('@repository', (repository.identifier or MAIN_REPOSITORY_IDENTIFIER))
         doc.add_attr('@rev', identifier)
         content_type = Redmine::MimeType.of(entry.path)
         doc.add_attr('@content_type', content_type) if content_type

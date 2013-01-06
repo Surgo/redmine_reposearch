@@ -90,7 +90,11 @@ class ReposearchController < ApplicationController
 
   def parse_target
     if params[:target].present?
-      @target = @project.repositories.find_by_identifier_param(params[:target])
+      if params[:target] = RedmineReposearch::MAIN_REPOSITORY_IDENTIFIER
+        @target = @project.repository
+      else
+        @target = @project.repositories.find_by_identifier_param(params[:target])
+      end
     else
       @target = @project.repository
     end
@@ -105,7 +109,7 @@ class ReposearchController < ApplicationController
 
   def estraier_command_failed(exception)
     @db.close()
-  rescue ReposearchEngine::EstraierError => e
+  rescue RedmineReposearch::EstraierError => e
     logger.warn("Estraier close failed: %s" % e.message)
   ensure
     render_error l(:error_estraier_command_failed, exception.message)

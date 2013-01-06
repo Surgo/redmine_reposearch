@@ -13,7 +13,7 @@
 <ul>
 <% @db.repositories.each do |repository| %>
 <% target_repository = (@target.identifier == repository.identifier) %>
-<li><label><%= radio_button_tag 'target', repository.identifier, target_repository %> <%= repository.name %></label>
+<li><label><%= radio_button_tag 'target', (repository.identifier or '[main]'), target_repository %> <%= repository.name %></label>
 <% if (!repository.branches.nil? && repository.branches.length > 0) or (!repository.tags.nil? && repository.tags.length > 0) -%>
 =&gt;&nbsp;<%= select_tag ("rev[%s]" % repository.identifier), options_for_select(
     repository.branches.map { |rev|  ["%s@%s" % [rev, l(:label_branch)], rev]} \
