@@ -1,3 +1,6 @@
+#!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
+#
 # Redmine reposearch plugin
 # Copyright (C) Kosei Kitahara.
 #
