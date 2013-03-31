@@ -1,0 +1,11 @@
+development:
+  hyperestraier:
+    url: http://localhost:1978/node/redmine
+    username: admin
+    password: login
+
+production:
+  hyperestraier:
+    url: http://localhost:1978/node/redmine
+    username: admin
+    password: login

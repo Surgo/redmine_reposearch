@@ -24,5 +24,5 @@ RedmineApp::Application.routes.draw do
   match 'repoindexer/init/:id', :to => 'repoindexer#indexing',
     :action => 'indexing', :init => true, :via => :get
   match 'repoindexer/crawl/:id', :to => 'repoindexer#indexing',
-    :action => 'indexing', :init => true, :via => :get
+    :action => 'indexing', :init => false, :via => :get
 end
