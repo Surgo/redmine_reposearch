@@ -1,6 +1,11 @@
 = Redmine reposearch plugin
 
-Add full-text search engine to repositories.
+Add full-text search engine to repositories. This fork extends original plugin by :
+* support for all project repositories
+* usage of pure-ruby hyperestraier client
+* index only files of certain types
+
+However please note that this my first development in ruby (so bugs definitely occurs). In addition the changes was made fast to make it running so i cannot say they are designed well. If somebody would like to use this i would recommend to look at my commits and probably change it according to the needs.
 
 == Requirements
 
@@ -13,10 +18,11 @@ Special Thanks to Redmine and FAL Labs.
 == Authors
 
 * {Kosei Kitahara}[http://surgo.jp/] ({@Surgo}[http://twitter.com/Surgo])
+* Jiří Dudek
 
 == LICENSE
 
-Copyright (C) Kosei Kitahara.
+Copyright (C) Kosei Kitahara and Jiří Dudek
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -34,7 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 == Links
 
-* {Project page}[http://surgo.github.com/redmine_reposearch/]
-* {Issues}[https://github.com/Surgo/redmine_reposearch/issues]
-* {Source code}[https://github.com/Surgo/redmine_reposearch]
-* {Documents}[https://github.com/Surgo/redmine_reposearch/wiki]
+* {Project page}[https://github.com/heevy/redmine_reposearch]
+* {Issues}[https://github.com/heevy/redmine_reposearch/issues]
+* {Source code}[https://github.com/heevy/redmine_reposearch]
+* {Documents}[https://github.com/heevy/redmine_reposearch/wiki]
