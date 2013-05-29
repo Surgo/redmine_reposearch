@@ -31,7 +31,7 @@ class ReposearchController < ApplicationController
 
   after_filter :close_db
 
-  rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
+  #rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
 
 
   def search
@@ -42,7 +42,7 @@ class ReposearchController < ApplicationController
          @doc_pages = Paginator.new(self, @results.doc_num, per_page_option, params['page'])
          for i in @doc_pages.current.offset...
              [(@doc_pages.current.offset + @doc_pages.items_per_page), @results.doc_num].min
-           @docs.push(@db.est_db.get_doc(@results.get_doc_id(i), 0))
+           @docs.push(@db.backend.get_doc(@results.get_doc(i).attr("@uri")))
          end
       end
     end
@@ -90,7 +90,7 @@ class ReposearchController < ApplicationController
 
   def parse_target
     if params[:target].present?
-      if params[:target] = RedmineReposearch::MAIN_REPOSITORY_IDENTIFIER
+      if params[:target] == RedmineReposearch::MAIN_REPOSITORY_IDENTIFIER
         @target = @project.repository
       else
         @target = @project.repositories.find_by_identifier_param(params[:target])

@@ -22,11 +22,10 @@ require 'redmine'
 
 Redmine::Plugin.register :redmine_reposearch do
   name 'Redmine Reposearch plugin'
-  author 'Kosei Kitahara'
+  author 'Jiří Dudek'
   description 'Full-text search of a repository plugin.'
-  version '0.0.5'
-  url 'http://surgo.github.com/redmine_reposearch/'
-  author_url 'http://surgo.jp/'
+  version '0.0.10'
+  url 'https://github.com/heevy/redmine_reposearch'
   requires_redmine :version_or_higher => '2.1.0'
 
   project_module :reposearch do
