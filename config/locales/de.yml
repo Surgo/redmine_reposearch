@@ -1,0 +1,14 @@
+# German strings go here for Rails i18n
+de:
+  label_reposearch: "Repositorysuche"
+  label_reposearch_plural: "Repositorysuche"
+
+  project_module_reposearch: "Repositorysuche"
+
+  permission_reposearch_search: "Repository durchsuchen"
+  permission_reposearch_indexing: "Indexierung des Repository"
+
+  error_estraier_command_failed: "Bei Verwendung des HyperEstraier ist ein Fehler aufgetreten: %{value}"
+  description_search: "Suchfeld"
+  button_search: "Suche"
+  label_not_found: "Keine Dokumente mit Treffern gefunden."
