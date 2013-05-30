@@ -26,15 +26,15 @@ class RepoindexerController < SysController
   before_filter :open_db
   after_filter :close_db
 
-  rescue_from Redmine::Scm::Adapters::CommandFailed, :with => :scm_command_failed
-  rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
+#  rescue_from Redmine::Scm::Adapters::CommandFailed, :with => :scm_command_failed
+#  rescue_from RedmineReposearch::EstraierError, :with => :estraier_command_failed
 
 
   def indexing
     logger.info("Indexing: %s" % @project.name)
     @db.indexing()
     @db.optimize()
-    logger.info("Successfully indexed %s: %d docs" % [@project.name, @db.est_db.doc_num()])
+    logger.info("Successfully indexed %s" % [@project.name])
     render :text => 'Successfully indexed!', :status => 200
   end
 
@@ -56,6 +56,7 @@ class RepoindexerController < SysController
 
   def open_db
     @db = RedmineReposearch::IndexDatabase.new(@project)
+    @db.open(RedmineReposearch::MODE_W)
     @db.remove() if params[:init]
     if @db.repositories.size <= 0
       render :text => 'Project has not (supported) repository.', :status => 404
@@ -70,7 +71,7 @@ class RepoindexerController < SysController
 
   def handle_error(err_msg)
     @db.close()
-  rescue RedmineReposearch::EstraierError => e
+  rescue Exception => e
     logger.warn("Estraier close failed: %s" % e.message)
   ensure
     logger.error(err_msg)

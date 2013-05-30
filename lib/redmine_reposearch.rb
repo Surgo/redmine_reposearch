@@ -18,18 +18,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-require "estraier"
-include Estraier
 include Rails.application.routes.url_helpers
+require "redmine_reposearch_pure_estraier"
 
 module RedmineReposearch
   FILE_MAX_SIZE = Setting.file_max_size_displayed.to_i.kilobyte
-  DATABASE_ROOT = ENV['RAILS_VAR'] ?
-    File.join(ENV['RAILS_VAR'], 'reposearch') :
-    File.join(Rails.root, 'reposearch')
 
-  MODE_W = Estraier::Database::DBWRITER | Estraier::Database::DBCREAT
-  MODE_R = Estraier::Database::DBREADER
+  MODE_W = "MODE_W"
+  MODE_R = "MODE_R"
 
   STATUS_SUCCESS = 1
   STATUS_FAIL = -1
@@ -39,88 +35,68 @@ module RedmineReposearch
 
   MAIN_REPOSITORY_IDENTIFIER = '[main]'
 
-  class EstraierError < StandardError; end
+  INDEXED_FILES = ["java", "xml", "properties","feature", "html", "html", "xhtml", "css", "js", "txt","sh", "cmd","bat" , "rb", "yml", "erb"]
+
   class IndexingError < StandardError; end
 
   class IndexDatabase
-    attr_accessor :project, :repository, :repositories, :latest_changeset, :latest_log, :path, :est_db
+    attr_accessor :backend, :project, :repository, :repositories, :latest_changeset, :latest_log
 
     def initialize(project)
       @project = project
       if @repository.respond_to?(:repositories)
         @repositories = @project.repositories.select { |repository| repository.supports_cat? }
       else
-        @repositories = [@project.repository]
+        @repositories = [@project.repositories]
       end
-      @repositories = @repositories.select { |repository| repository.supports_cat? }
-      @path = File.join(DATABASE_ROOT, @project.identifier)
-
-      @est_db = nil
+      @repositories = @repositories[0].select { |repository| repository.supports_cat? }
+      @backend = nil
     end
 
     def search(tokens, repository, rev, content_type=nil, all_words=true)
       return [] unless tokens
-      condition = Estraier::Condition::new
+
       if all_words
         phrase = tokens.join(" AND ")
       else
         phrase = tokens.join(" OR ")
       end
       Rails.logger.info("Search phrase: %s" % phrase)
-      condition.set_phrase(phrase)
       Rails.logger.info("Search conditions: %s, %s, %s" % [
-                                 repository, rev, content_type])
-      condition.add_attr("@repository STREQ %s" % repository) if repository
-      condition.add_attr("@rev STREQ %s" % rev) if rev
-      condition.add_attr("@content_type STREQ %s" % content_type) if content_type
-      return @est_db.search(condition)
+          repository, rev, content_type])
+      return @backend.search(phrase,repository,rev,content_type)
     end
 
     def is_open?
-      return true if @est_db
-      return false
+      return true
     end
 
     def open(mode=MODE_R)
-      FileUtils.mkdir_p(@path) unless File.exist?(@path)
-      if !is_open?
-        @est_db = Estraier::Database::new
-        Rails.logger.debug("Open DB: %s" % @path)
-        unless @est_db.open(@path, mode)
-          err_msg = @est_db.err_msg(@est_db.error)
-          @est_db = nil
-          handle_estraier_error(
-            "Open failed (Need to create indexes) - '%s'" % err_msg)
-        end
-      end
+      @backend = RedmineReposearchPureEstraier::RedmineReposearchPureEstraierBackend.new
+      @backend.open(mode)
     end
 
     def close
       if is_open?
-        Rails.logger.debug("Close DB: %s" % @path)
-        unless @est_db.close
-          Rails.logger.error("Close failed (Try to restart) - '%s'" % @est_db.err_msg(@est_db.error))
-        end
+        Rails.logger.debug("Close DB for project : %s ." % @project.name)
+        @backend.close
       end
-      @est_db = nil
+      @backend = nil
     end
 
     def remove
-      close
       @repositories.each do |repository|
         Rails.logger.info("Remove logs: %s - %s" % [
                           @project.name,
                           (repository.identifier or MAIN_REPOSITORY_IDENTIFIER)])
         Indexinglog.delete_all(['repository_id = ?', repository.id])
       end
-      Rails.logger.info("Remove DB: %s" % @path)
-      FileUtils.rm_r(Dir.glob(File.join(@path, '*')), {:force=>true})
+      @backend.remove
     end
 
     def optimize
       Rails.logger.debug("Optimize DB: %s" % @path)
-      raise EstraierError.new("Optimize failed: %s" % @est_db.err_msg(@est_db.error)) \
-        unless @est_db.optimize(Estraier::Database::OPTNOPURGE)
+      @backend.optimize
     end
 
     def indexing
@@ -160,10 +136,13 @@ module RedmineReposearch
 
     private
 
-    def handle_estraier_error(err_msg)
-      Rails.logger.error(err_msg)
-      close
-      raise EstraierError.new(err_msg)
+    def index_entry?(repository, path)
+      path = repository.relative_path(path)
+      path_parts = path.split "/"
+      path_parts.each { |part| return false if part.start_with? "." }
+      last_part = path_parts.last
+      last_part_extension = last_part[/^.+\.(.+?)$/,1]
+      return INDEXED_FILES.include? last_part_extension
     end
 
     def add_log(repository, changeset, status, message=nil)
@@ -200,13 +179,13 @@ module RedmineReposearch
                            (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), "[NOBRANCH]"])
         walk(repository, nil, repository.entries(nil, nil))
       end
-      if repository.tags
-        repository.tags.each do |tag|
-          Rails.logger.debug("Walking in tag: %s - %s" % [
-                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
-          walk(repository, tag, repository.entries(nil, tag))
-        end
-      end
+      #if repository.tags
+      #  repository.tags.each do |tag|
+      #    Rails.logger.debug("Walking in tag: %s - %s" % [
+      #                       (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
+      #    walk(repository, tag, repository.entries(nil, tag))
+      #  end
+      #end
     end
 
     def indexing_diff(repository, diff_from, diff_to)
@@ -234,7 +213,7 @@ module RedmineReposearch
         actions.each do |path, action|
           entry = repository.entry(path, identifier)
           if action == DELETE
-            delete_doc(generate_uri(repository, identifier, path))
+            delete_doc(repository, identifier, path)
           else
             add_or_update_index(repository, identifier, entry)
           end
@@ -270,15 +249,15 @@ module RedmineReposearch
              repository.latest_changesets("", nil, diff_to.id - diff_from.id)\
              .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
       end
-      if repository.tags
-        repository.tags.each do |tag|
-          Rails.logger.debug("Walking in tag: %s - %s" % [
-                             (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
-          walk(repository, tag,
-               repository.latest_changesets("", tag, diff_to.id - diff_from.id)\
-               .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
-        end
-      end
+      #if repository.tags
+      #  repository.tags.each do |tag|
+      #    Rails.logger.debug("Walking in tag: %s - %s" % [
+      #                       (repository.identifier or MAIN_REPOSITORY_IDENTIFIER), tag])
+      #    walk(repository, tag,
+      #         repository.latest_changesets("", tag, diff_to.id - diff_from.id)\
+      #         .select { |changeset| changeset.id > diff_from.id and changeset.id <= diff_to.id})
+      #  end
+      #end
     end
 
     def generate_uri(repository, identifier, path)
@@ -294,38 +273,53 @@ module RedmineReposearch
     def add_or_update_index(repository, identifier, entry)
       uri = generate_uri(repository, identifier, entry.path)
       return unless uri
-      text = repository.cat(entry.path, identifier)
-      return delete_doc(uri) unless text
-
-      doc = get_doc(uri)
-      if not doc or delete_doc(uri)
-        Rails.logger.info("Add doc: %s" % uri)
-        doc = Estraier::Document::new
-        doc.add_attr('@uri', uri)
-        doc.add_attr('@title', entry.path)
-        doc.add_attr('@repository', (repository.identifier or MAIN_REPOSITORY_IDENTIFIER))
-        doc.add_attr('@rev', identifier)
-        content_type = Redmine::MimeType.of(entry.path)
-        doc.add_attr('@content_type', content_type) if content_type
-        doc.add_text(text)
-        unless @est_db.put_doc(doc, Estraier::Database::PDCLEAN)
-          Rails.logger.warn("Document put failed - %s" % @est_db.err_msg(@est_db.error))
-        end
+      if not index_entry?(repository,entry.path)
+        Rails.logger.info("Skipping : %s" % uri)
+        return
       end
+      Rails.logger.info("Add or update doc: %s" % uri)
+      @backend.add_or_update_index(repository,identifier,entry,uri)
     end
 
-    def get_doc(uri)
-      id = @est_db.uri_to_id(uri)
-      return nil if id < 0
-      Rails.logger.info("Get doc: %s (%s)" % [uri, id])
-      return @est_db.get_doc(id, Estraier::Database::GDNOTEXT)
+    def delete_doc(repository, identifier, path)
+      uri = generate_uri(repository, identifier, path)
+      if not index_entry?(repository,entry.path)
+        Rails.logger.info("Skipping : %s" % uri)
+        return
+      end
+      Rails.logger.info("Delete doc: %s" % uri)
+      @backend.delete_doc(uri)
+    end
+  end
+
+  class RedmineRepoSearchBackend
+
+    def open(mode)
+
+    end
+
+    def close
+
+    end
+
+    def remove
+
     end
 
     def delete_doc(uri)
-      id = @est_db.uri_to_id(uri)
-      return nil if id < 0
-      Rails.logger.info("Delete doc: %s (%s)" % [uri, id])
-      return @est_db.out_doc(id, Estraier::Database::ODCLEAN)
+      return nil
+    end
+
+    def add_or_update_index(repository, identifier, entry, uri)
+      return nil
+    end
+
+    def optimize
+      return nil
+    end
+
+    def search(query, repository, rev, content_type=nil)
+      return nil
     end
   end
 end

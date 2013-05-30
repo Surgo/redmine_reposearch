@@ -1,6 +1,13 @@
 = Redmine reposearch plugin
 
-Add full-text search engine to repositories.
+Add full-text search engine to repositories. This fork extends original plugin by :
+* support for all project repositories
+* usage of pure-ruby hyperestraier client
+* index only branches (tags are not indexed)
+* index only files of certain types
+* fix bug in incremental indexing (original plugin index all the repo everytime)
+
+However please note that this my first development in ruby (so bugs definitely occurs). In addition the changes was made fast to make it running so i cannot say they are designed well. If somebody would like to use this i would recommend to look at my commits and probably change it according to the needs.
 
 == Requirements
 
@@ -10,13 +17,22 @@ Add full-text search engine to repositories.
 
 Special Thanks to Redmine and FAL Labs.
 
+== Installation
+* You have to install hyperestraier(tested with version 1.4.13). The prefered way is to use your package manager(apt-get, yum, macports ...)
+* Connect to it via browser and create node with name "redmine". (some help may be found at http://snippets.aktagon.com/snippets/79-How-to-install-Hyper-Estraier-and-the-Ruby-bindings-on-Mac-OS-X-including-a-mini-example-on-how-to-use-the-P2P-capabilities after installation) 
+* Install plugin to the redmine using http://www.redmine.org/projects/redmine/wiki/Plugins
+* Check configuration in plugins/redmine_reposearch/config/hyperestraier-configuration.yml
+* Read documentation at https://github.com/Surgo/redmine_reposearch/wiki/Document
+* Enjoy
+
 == Authors
 
 * {Kosei Kitahara}[http://surgo.jp/] ({@Surgo}[http://twitter.com/Surgo])
+* Jiří Dudek
 
 == LICENSE
 
-Copyright (C) Kosei Kitahara.
+Copyright (C) Kosei Kitahara and Jiří Dudek
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -34,7 +50,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 == Links
 
-* {Project page}[http://surgo.github.com/redmine_reposearch/]
-* {Issues}[https://github.com/Surgo/redmine_reposearch/issues]
-* {Source code}[https://github.com/Surgo/redmine_reposearch]
-* {Documents}[https://github.com/Surgo/redmine_reposearch/wiki]
+* {Project page}[https://github.com/heevy/redmine_reposearch]
+* {Issues}[https://github.com/heevy/redmine_reposearch/issues]
+* {Source code}[https://github.com/heevy/redmine_reposearch]
+* {Documents}[https://github.com/heevy/redmine_reposearch/wiki]
